@@ -78,6 +78,7 @@ This project renders live MeshCore traffic on a Leaflet + OpenStreetMap map. A F
 
 ## MQTT + Decoder
 - MQTT supports **WebSockets + TLS** or plain TCP. Typical deployments use `MQTT_TRANSPORT=websockets`, `MQTT_TLS=true`, and `MQTT_WS_PATH=/` or `/mqtt`.
+- `MQTT_TOPIC` accepts a comma-separated list, so one map can subscribe to multiple topic trees such as `meshcore/BOS/#,meshcore/CON/#`.
 - Decoder uses Node + [`meshcore-decoder-multibyte-patch`](https://www.npmjs.com/package/meshcore-decoder-multibyte-patch) installed in the container.
 - The patched package replaces the official decoder so the map can ingest 1-byte, 2-byte, and 3-byte repeater prefixes.
 - `backend/decoder.py` writes a small Node helper and calls it to decode MeshCore packets.

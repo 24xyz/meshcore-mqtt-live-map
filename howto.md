@@ -114,6 +114,7 @@ MQTT_PASSWORD=yourpass
 MQTT_TRANSPORT=websockets
 MQTT_WS_PATH=/
 MQTT_TLS=true
+# Comma-separated list supported, e.g. meshcore/BOS/#,meshcore/CON/#
 MQTT_TOPIC=meshcore/#
 
 # MQTT online presence tuning (v1.5+)
