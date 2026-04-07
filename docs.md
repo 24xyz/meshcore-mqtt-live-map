@@ -40,7 +40,6 @@ This project renders live MeshCore traffic on a Leaflet + OpenStreetMap map. A F
 - `CUSTOM_LINK_URL` adds a HUD link button; blank hides it.
 - `PACKET_ANALYZER_URL` adds an external link on Route Details hashes; set it to a base such as `https://analyzer.letsmesh.net/packets?packet_hash=`.
 - `PEERS_DEFAULT_LIMIT` controls the default number of peers returned by `/peers/{device_id}` when no `?limit=` is passed; default `8`.
-- `PEERS_MAX_LIMIT` controls the maximum peer count accepted by `/peers/{device_id}` and caps `PEERS_DEFAULT_LIMIT`; default `200`.
 - `MAP_BOUNDARY_MODE` switches geographic filtering between `radius` and `polygon`; default is `radius`.
 - `MAP_BOUNDARY_FILE` points at the polygon JSON file used when `MAP_BOUNDARY_MODE=polygon`.
 - `MAP_BOUNDARY_SHOW` controls whether the active radius/polygon boundary is drawn on the map.

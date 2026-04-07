@@ -119,7 +119,6 @@ from config import (
   MQTT_ONLINE_FORCE_NAMES_SET,
   MQTT_STATUS_OFFLINE_VALUES_SET,
   PEERS_DEFAULT_LIMIT,
-  PEERS_MAX_LIMIT,
   DEBUG_PAYLOAD,
   DEBUG_PAYLOAD_MAX,
   TURNSTILE_ENABLED,
@@ -3415,7 +3414,7 @@ def get_peers(device_id: str, request: Request, limit: Optional[int] = Query(Non
   if not device_id:
     raise HTTPException(status_code=400, detail="device_id required")
   raw_limit = PEERS_DEFAULT_LIMIT if limit is None else limit
-  limit_value = max(1, min(int(raw_limit or PEERS_DEFAULT_LIMIT), PEERS_MAX_LIMIT))
+  limit_value = max(1, int(raw_limit or PEERS_DEFAULT_LIMIT))
   payload = _peer_stats_for_device(device_id, limit_value)
   state = devices.get(device_id)
   if state and not _coords_are_zero(state.lat, state.lon):

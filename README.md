@@ -129,7 +129,6 @@ Site metadata (page title + embeds):
 - `CUSTOM_LINK_URL` (optional extra HUD link; hidden when blank)
 - `PACKET_ANALYZER_URL` (optional analyzer base URL for Route Details hashes; e.g. `https://analyzer.letsmesh.net/packets?packet_hash=`)
 - `PEERS_DEFAULT_LIMIT` (optional default number of incoming/outgoing peers returned by `/peers/{device_id}`; default `8`)
-- `PEERS_MAX_LIMIT` (optional cap for `/peers/{device_id}` and the default peer list size; default `200`)
 - `MAP_BOUNDARY_MODE` (`radius` or `polygon`; default `radius`)
 - `MAP_BOUNDARY_FILE` (JSON file used when `MAP_BOUNDARY_MODE=polygon`; default `/data/map_boundary.json`)
 - `MAP_BOUNDARY_SHOW` (draw the active radius/polygon boundary overlay on the map)
