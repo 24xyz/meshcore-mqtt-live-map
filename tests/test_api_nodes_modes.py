@@ -93,6 +93,7 @@ def test_api_nodes_updated_since_and_full_mode_override(monkeypatch):
 def test_get_peers_uses_env_default_limit(monkeypatch):
   monkeypatch.setattr(app, "PROD_MODE", False)
   monkeypatch.setattr(app, "PEERS_DEFAULT_LIMIT", 25)
+  monkeypatch.setattr(app, "PEERS_MAX_LIMIT", 200)
   captured = {}
 
   def _fake_peer_stats(device_id, limit):
@@ -118,6 +119,7 @@ def test_get_peers_uses_env_default_limit(monkeypatch):
 def test_get_peers_limit_query_overrides_and_caps(monkeypatch):
   monkeypatch.setattr(app, "PROD_MODE", False)
   monkeypatch.setattr(app, "PEERS_DEFAULT_LIMIT", 25)
+  monkeypatch.setattr(app, "PEERS_MAX_LIMIT", 200)
   captured = {}
 
   def _fake_peer_stats(device_id, limit):
@@ -137,4 +139,4 @@ def test_get_peers_limit_query_overrides_and_caps(monkeypatch):
   payload = app.get_peers("AA001111", _request("/peers/AA001111?limit=999"), limit=999)
 
   assert payload["device_id"] == "AA001111"
-  assert captured == {"device_id": "AA001111", "limit": 50}
+  assert captured == {"device_id": "AA001111", "limit": 200}
