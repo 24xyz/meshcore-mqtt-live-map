@@ -84,6 +84,13 @@ This project renders live MeshCore traffic on a Leaflet + OpenStreetMap map. A F
 ## MQTT + Decoder
 - MQTT supports **WebSockets + TLS** or plain TCP. Typical deployments use `MQTT_TRANSPORT=websockets`, `MQTT_TLS=true`, and `MQTT_WS_PATH=/` or `/mqtt`.
 - `MQTT_TOPIC` accepts a comma-separated list, so one map can subscribe to multiple topic trees such as `meshcore/BOS/#,meshcore/CON/#`.
+- Against `meshcore-mqtt-broker`, the map should normally use a broker
+  `SUBSCRIBER_N` username/password pair. Recommended role is `2`
+  (`full_access`); role `1` is only needed when you explicitly want
+  `/internal` topics or admin-only broker visibility.
+- The map does not generate or rotate MeshCore JWT auth tokens on its own, so
+  node-style publisher auth (`v1_<PUBLIC_KEY>`) is not the normal credential
+  flow for this app.
 - Decoder uses Node + the official [`@michaelhart/meshcore-decoder`](https://www.npmjs.com/package/@michaelhart/meshcore-decoder) installed in the container.
 - The official package now handles 1-byte, 2-byte, and 3-byte repeater prefixes used by the map.
 - `backend/decoder.py` writes a small Node helper and calls it to decode MeshCore packets.

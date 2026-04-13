@@ -141,8 +141,8 @@ Site metadata (page title + embeds):
 MQTT:
 - `MQTT_HOST`
 - `MQTT_PORT`
-- `MQTT_USERNAME`
-- `MQTT_PASSWORD`
+- `MQTT_USERNAME` (for `meshcore-mqtt-broker`, usually a broker-side `SUBSCRIBER_N` username, not `v1_<PUBLIC_KEY>`)
+- `MQTT_PASSWORD` (matching subscriber password from the broker config)
 - `MQTT_TRANSPORT` (`tcp` or `websockets`)
 - `MQTT_WS_PATH` (usually `/` or `/mqtt`)
 - `MQTT_TLS` (`true`)
@@ -273,6 +273,14 @@ Use it:
 - To see full paths, the feed must include Path/Trace packets (payload types 8/9).
 - Runtime state is persisted to `data/state.json`.
 - MQTT disconnects are handled; the client will reconnect when the broker returns.
+- When using Michael Hart's `meshcore-mqtt-broker`, the map should usually log
+  in with a broker `SUBSCRIBER_N` account such as
+  `SUBSCRIBER_1=meshmap:change-this-password:2`.
+- The map does not mint MeshCore JWT auth tokens by itself, so node-style
+  publisher auth (`v1_<PUBLIC_KEY>`) is not the normal setup for this app.
+- Subscriber role `2` is the recommended broker role for most maps; role `1`
+  is only needed if you explicitly want `/internal` topics or other admin-only
+  broker visibility.
 - MQTT connectivity (`MQTT online`) is based on `/status` + `/internal`; `/packets` is treated as feed activity and does not by itself mark a node online.
 - If a node is still MQTT-online but has stopped sending fresh location packets, the map keeps its last known position visible until MQTT presence expires.
 - Live route IDs are observer-aware (`message_hash:receiver_id`) so the same
