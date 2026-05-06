@@ -222,10 +222,17 @@ const prodMode = String(config.prodMode).toLowerCase() === 'true';
 const apiToken = config.prodToken || '';
 const qrCodeButtonEnabled =
   String(config.qrCodeButtonEnabled).toLowerCase() === 'true';
+const publicPathPrefix = String(config.appBasePath || '').trim();
+const apiPath = (path) => {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  if (!publicPathPrefix) return p;
+  return `${publicPathPrefix}${p}`;
+};
 const tokenHeaders = () => (prodMode && apiToken ? { 'x-access-token': apiToken } : {});
 const withToken = (path) => {
-  if (!prodMode || !apiToken) return path;
-  const url = new URL(path, window.location.origin);
+  const resolved = apiPath(path);
+  if (!prodMode || !apiToken) return resolved;
+  const url = new URL(resolved, window.location.origin);
   url.searchParams.set('token', apiToken);
   return `${url.pathname}${url.search}`;
 };
@@ -3868,7 +3875,7 @@ async function fetchLosServerResult(a, b) {
     h2: heightB.toFixed(2),
   });
   try {
-    const res = await fetch(`/los?${params.toString()}`);
+    const res = await fetch(apiPath(`/los?${params.toString()}`));
     const data = await res.json();
     if (!data.ok) {
       return { ok: false, error: data.error || 'failed' };
@@ -6521,7 +6528,7 @@ function handleRealtimeMessage(msg) {
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const wsSuffix = (prodMode && apiToken) ? `?token=${encodeURIComponent(apiToken)}` : '';
-  const ws = new WebSocket(`${proto}://${location.host}/ws${wsSuffix}`);
+  const ws = new WebSocket(`${proto}://${location.host}${apiPath('/ws')}${wsSuffix}`);
 
   ws.onopen = () => console.log("ws connected");
   ws.onclose = () => {
@@ -6661,7 +6668,9 @@ setInterval(refreshHeatLayer, 15000);
 setInterval(refreshOnlineMarkers, 30000);
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => { });
+    const swPath = apiPath('/sw.js');
+    const swScope = publicPathPrefix ? `${publicPathPrefix}/` : '/';
+    navigator.serviceWorker.register(swPath, { scope: swScope }).catch(() => { });
   });
 }
 
