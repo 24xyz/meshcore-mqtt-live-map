@@ -1,5 +1,12 @@
 # Versions
 
+## v1.9.2 (05-23-2026)
+- Fixed the remaining issue #68 Docker Compose gap by passing the Route History envs into the container: `ROUTE_HISTORY_ENABLED`, `ROUTE_HISTORY_HOURS`, `ROUTE_HISTORY_MAX_SEGMENTS`, `ROUTE_HISTORY_FILE`, `ROUTE_HISTORY_PAYLOAD_TYPES`, and `ROUTE_HISTORY_COMPACT_INTERVAL`.
+- Compose-based deployments can now actually disable Route History from `.env`; previous `1.9.1` installs could still behave as if history was enabled because the container was falling back to backend defaults.
+- Fixed the follow-up issue #68 peer regression where disabling Route History eventually caused the Peers tool counts to go empty after older peer buckets expired.
+- Peer-history buckets now continue recording from live routes even when Route History is disabled, so the History tool can stay off without disabling incoming/outgoing peer counts.
+- Route History remains disabled as intended: no History button/panel, no history payloads in `/snapshot` or WebSocket snapshots, and no route-history file growth from live traffic.
+
 ## v1.9.1 (05-08-2026)
 - Fixed issue #68: `ROUTE_HISTORY_ENABLED=false` now fully disables Route History instead of only stopping new history recording.
 - When Route History is disabled, the History button and panel are removed from the frontend, `history=on` no longer re-enables it, and the API/WebSocket snapshot stop publishing history edges and history window metadata.
