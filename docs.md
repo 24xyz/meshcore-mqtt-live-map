@@ -179,7 +179,9 @@ This project renders live MeshCore traffic on a Leaflet + OpenStreetMap map. A F
 - Hovering the LOS profile also tracks a cursor on the map and highlights nearby peaks.
 - LOS legend items (clear/blocked/peaks/relay) are hidden unless the LOS tool is active.
 - Shift+click nodes (or long‑press on mobile) or click the map repeatedly to add LOS pins and build a chained path segment-by-segment.
-- Drag endpoints to update LOS in realtime. Click a point marker to select it, then click the map to reposition that specific point. LOS heights are stored per pin, not as one shared A/B pair.
+- The LOS panel also supports direct latitude/longitude pin entry, including a per-pin height field for above-ground-level entry at that pin.
+- Drag endpoints to update LOS in realtime. Click a point marker to select it, then click the map to reposition that specific point, or move it from the LOS coordinate editor. LOS heights are stored per pin, not as one shared A/B pair.
+- LOS and Propagation stay as separate right-side tools on the same map so path clearance and RF coverage can be planned side by side without merging their controls.
 
 ## Device Names + Roles
 - Names come from advert payloads or status messages when available.

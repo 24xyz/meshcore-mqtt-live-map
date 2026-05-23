@@ -840,6 +840,18 @@
       gap: 8px;
     }
 
+    .los-point-editor {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, .12);
+    }
+
+    .los-actions {
+      display: grid;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
     .los-panel input {
       background: rgba(0, 0, 0, .35);
       color: #fff;

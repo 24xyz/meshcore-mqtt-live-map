@@ -498,6 +498,12 @@ const losPanel = document.getElementById('los-panel');
 const losPanelCollapse = document.getElementById('los-panel-collapse');
 const losHeightAInput = document.getElementById('los-height-a');
 const losHeightBInput = document.getElementById('los-height-b');
+const losPointLabel = document.getElementById('los-point-label');
+const losPointLatInput = document.getElementById('los-point-lat');
+const losPointLonInput = document.getElementById('los-point-lon');
+const losPointHeightInput = document.getElementById('los-point-height');
+const losAddCoordsButton = document.getElementById('los-add-coords');
+const losUpdatePointButton = document.getElementById('los-update-point');
 const propPanel = document.getElementById('prop-panel');
 const propPanelCollapse = document.getElementById('prop-panel-collapse');
 const historyPanel = document.getElementById('history-panel');
@@ -568,6 +574,34 @@ const setLosPointHeight = (index, value) => {
   losPointHeights[index] = Number.isFinite(next) ? next : 0;
   persistLosPointHeights();
 };
+const formatLosPointCoordinate = (value) => {
+  const next = Number(value);
+  return Number.isFinite(next) ? next.toFixed(6) : '';
+};
+const syncLosPointEditor = () => {
+  const hasSelection = Number.isInteger(losSelectedPointIndex) &&
+    losSelectedPointIndex >= 0 &&
+    losSelectedPointIndex < losPoints.length;
+  if (losPointLabel) {
+    losPointLabel.textContent = hasSelection
+      ? `Selected pin ${losSelectedPointIndex + 1}.`
+      : 'No pin selected.';
+  }
+  if (losUpdatePointButton) {
+    losUpdatePointButton.disabled = !hasSelection;
+  }
+  if (!hasSelection) return;
+  const point = losPoints[losSelectedPointIndex];
+  if (losPointLatInput) {
+    losPointLatInput.value = formatLosPointCoordinate(point.lat);
+  }
+  if (losPointLonInput) {
+    losPointLonInput.value = formatLosPointCoordinate(point.lng);
+  }
+  if (losPointHeightInput) {
+    losPointHeightInput.value = String(getLosPointHeight(losSelectedPointIndex));
+  }
+};
 const syncLosHeightInputs = () => {
   const startIdx = Number.isInteger(losActiveSegmentIndex) ? losActiveSegmentIndex : null;
   const endIdx = Number.isInteger(startIdx) ? startIdx + 1 : null;
@@ -579,6 +613,7 @@ const syncLosHeightInputs = () => {
     losHeightBInput.value = String(endIdx != null ? getLosPointHeight(endIdx) : 0);
     losHeightBInput.disabled = endIdx == null;
   }
+  syncLosPointEditor();
 };
 syncLosHeightInputs();
 const deviceData = new Map();
@@ -7248,10 +7283,26 @@ const parseLosHeightValue = (input) => {
   const value = Number(input.value);
   return Number.isFinite(value) ? value : 0;
 };
+const parseLosPointEditorValues = () => {
+  const rawLat = losPointLatInput ? String(losPointLatInput.value || '').trim() : '';
+  const rawLon = losPointLonInput ? String(losPointLonInput.value || '').trim() : '';
+  const rawHeight = losPointHeightInput
+    ? String(losPointHeightInput.value || '').trim()
+    : '';
+  if (!rawLat || !rawLon) return null;
+  const lat = Number(rawLat);
+  const lon = Number(rawLon);
+  const height = rawHeight ? Number(rawHeight) : 0;
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) return null;
+  if (!Number.isFinite(lon) || lon < -180 || lon > 180) return null;
+  if (!Number.isFinite(height)) return null;
+  return { lat, lon, height };
+};
 const handleLosHeightChange = () => {
   if (!Number.isInteger(losActiveSegmentIndex) || losActiveSegmentIndex < 0) return;
   setLosPointHeight(losActiveSegmentIndex, parseLosHeightValue(losHeightAInput));
   setLosPointHeight(losActiveSegmentIndex + 1, parseLosHeightValue(losHeightBInput));
+  syncLosPointEditor();
   if (losPoints.length >= 2) {
     if (losActiveSegmentIndex >= 0 && losActiveSegmentIndex < losSegmentMeta.length) {
       losSegmentMeta[losActiveSegmentIndex] = null;
@@ -7358,6 +7409,7 @@ function setLosSelectedPoint(index) {
     if (!el) return;
     el.classList.toggle('selected', losSelectedPointIndex === idx);
   });
+  syncLosPointEditor();
 }
 
 function createLosPointMarker(latlng, index) {
@@ -7411,15 +7463,23 @@ function createLosPointMarker(latlng, index) {
   return marker;
 }
 
-function handleLosPoint(latlng) {
+function handleLosPoint(latlng, options = {}) {
   losPoints.push(latlng);
   if (losPointHeights.length < losPoints.length) {
     losPointHeights.push(0);
     persistLosPointHeights();
   }
+  const pointIndex = losPoints.length - 1;
+  if (options.height != null) {
+    setLosPointHeight(pointIndex, options.height);
+  }
   const marker = createLosPointMarker(latlng, losPoints.length - 1);
   losPointMarkers.push(marker);
-  setLosSelectedPoint(null);
+  if (options.select === true) {
+    setLosSelectedPoint(pointIndex);
+  } else {
+    setLosSelectedPoint(null);
+  }
 
   if (losPoints.length === 1) {
     setLosStatus('LOS: select next point');
@@ -7429,6 +7489,47 @@ function handleLosPoint(latlng) {
   ensureLosSegments();
   selectLosSegment(losPoints.length - 2, { silent: true });
   scheduleLosCheck(true, { allowNetwork: true, forceNetwork: true });
+}
+
+async function addLosPointFromInputs() {
+  const parsed = parseLosPointEditorValues();
+  if (!parsed) {
+    setLosStatus('LOS: enter valid latitude and longitude');
+    return;
+  }
+  handleLosPoint(L.latLng(parsed.lat, parsed.lon), { height: parsed.height });
+}
+
+async function moveSelectedLosPointFromInputs() {
+  if (!Number.isInteger(losSelectedPointIndex) ||
+      losSelectedPointIndex < 0 ||
+      losSelectedPointIndex >= losPoints.length) {
+    setLosStatus('LOS: select a pin first');
+    return;
+  }
+  const parsed = parseLosPointEditorValues();
+  if (!parsed) {
+    setLosStatus('LOS: enter valid latitude and longitude');
+    return;
+  }
+  const next = L.latLng(parsed.lat, parsed.lon);
+  setLosPointHeight(losSelectedPointIndex, parsed.height);
+  if (losPointMarkers[losSelectedPointIndex]) {
+    losPointMarkers[losSelectedPointIndex].setLatLng(next);
+  }
+  const affected = updateLosPointPosition(losSelectedPointIndex, next) || [];
+  syncLosHeightInputs();
+  syncLosPointEditor();
+  if (!affected.length) {
+    setLosStatus(`LOS: moved pin ${losSelectedPointIndex + 1}`);
+    return;
+  }
+  setLosStatus('LOS: calculating...');
+  await recomputeLosSegments(affected, {
+    allowNetwork: true,
+    forceNetwork: true,
+    finalIndex: affected[affected.length - 1]
+  });
 }
 
 if (losClearButton) {
@@ -7442,6 +7543,16 @@ if (losClearButton) {
 if (losRemoveLastButton) {
   losRemoveLastButton.addEventListener('click', () => {
     removeLastLosPoint();
+  });
+}
+if (losAddCoordsButton) {
+  losAddCoordsButton.addEventListener('click', () => {
+    addLosPointFromInputs();
+  });
+}
+if (losUpdatePointButton) {
+  losUpdatePointButton.addEventListener('click', () => {
+    moveSelectedLosPointFromInputs();
   });
 }
 const nodesToggle = document.getElementById('nodes-toggle');

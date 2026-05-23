@@ -203,6 +203,26 @@
       <span>End pin height (m)</span>
       <input id="los-height-b" type="number" inputmode="numeric" step="1" value="0" />
     </label>
+    <div class="los-point-editor">
+      <div class="small"><strong>Pin coordinates</strong></div>
+      <div class="small" id="los-point-label">No pin selected.</div>
+      <label class="los-field">
+        <span>Latitude</span>
+        <input id="los-point-lat" type="number" inputmode="decimal" step="0.000001" placeholder="-33.868820" />
+      </label>
+      <label class="los-field">
+        <span>Longitude</span>
+        <input id="los-point-lon" type="number" inputmode="decimal" step="0.000001" placeholder="151.209296" />
+      </label>
+      <label class="los-field">
+        <span>Pin height (m)</span>
+        <input id="los-point-height" type="number" inputmode="numeric" step="1" value="0" />
+      </label>
+      <div class="los-actions">
+        <button class="map-toggle" id="los-add-coords" type="button">Add pin from coords</button>
+        <button class="map-toggle" id="los-update-point" type="button">Move selected pin</button>
+      </div>
+    </div>
     <div class="small">Add pins to build a route. Select a segment to edit its start and end pin heights. Heights are above ground at that pin. Click the profile to copy coordinates.</div>
     <button class="map-toggle" id="los-remove-last" type="button">Remove last pin</button>
     <button class="map-toggle" id="los-clear" type="button">Clear LOS pins</button>

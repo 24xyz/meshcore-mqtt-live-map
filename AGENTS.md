@@ -107,6 +107,7 @@ Current version: `1.9.2` (see `VERSIONS.md`).
 - LOS UI includes peak markers, a relay suggestion marker, elevation profile hover, and map-line hover sync.
 - LOS legend items (clear/blocked/peaks/relay) are hidden until the LOS tool is active.
 - Mobile LOS supports long-press on nodes (Shift+click on desktop); endpoints can be dragged or click-selected and moved via map click.
+- LOS also supports direct latitude/longitude pin entry in the panel, including a per-pin height field for above-ground-level input at that pin.
 - MQTT online status is derived from `/status` + `/internal` TTL windows; `/packets` is tracked as feed activity.
 - Devices that remain MQTT-online keep their last known coordinates on the map until MQTT presence expires, even if fresh location packets stop.
 - `MQTT_ONLINE_FORCE_NAMES` (comma-separated device names) forces selected nodes to always appear MQTT online.
@@ -123,6 +124,7 @@ Current version: `1.9.2` (see `VERSIONS.md`).
 - History records route modes from `ROUTE_HISTORY_ALLOWED_MODES` (default: `path`).
 - Propagation render stays visible until a new render; origin changes only mark it dirty.
 - Propagation now has an adjustable TX antenna gain (dBi) control, and Rx AGL defaults to 1m.
+- LOS and Propagation remain separate tools on the same map so route obstruction checks and RF coverage planning can be used together without sharing one combined panel state.
 - Preview image endpoint renders in-bounds device dots for shared links.
 - Peers tool opens a right-side panel showing incoming/outgoing neighbors (counts + %) based on rolling peer-history buckets; selecting a node draws peer lines on the map.
 - Peer-history buckets are also updated from route `point_ids` when a hop cannot be drawn as a visible segment, so peer counts still reflect real adjacency for non-drawable hops.

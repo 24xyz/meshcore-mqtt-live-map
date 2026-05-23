@@ -191,7 +191,7 @@ A single file containing all client-side logic:
 | Marker management | 200-400 | Node markers, styles by role |
 | Route rendering | 400-600 | Live routes with animations |
 | History tool | 600-800 | 24h route history visualization |
-| LOS tool | 800-1100 | Line of sight with elevation profile |
+| LOS tool | 800-1100 | Line of sight with elevation profile + coordinate pin entry |
 | Peers tool | 1100-1300 | Inbound/outbound neighbor analysis |
 | Propagation tool | 1300-2000 | RF coverage simulation (includes TX antenna gain + Rx AGL controls) |
 | WebSocket | 2000-2200 | Real-time updates |

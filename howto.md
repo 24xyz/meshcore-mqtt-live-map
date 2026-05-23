@@ -233,6 +233,7 @@ LOS note:
 - The live map LOS tool now includes Earth curvature by default.
 - Leave `LOS_CURVATURE_ENABLED` unset to keep the default `true`.
 - Leave `LOS_CURVATURE_FACTOR` unset to keep the default `1.333333`.
+- LOS pins can be added from the map or entered directly by latitude/longitude in the LOS panel, with height stored per pin above ground level.
 
 Optional polygon boundary mode:
 ```env

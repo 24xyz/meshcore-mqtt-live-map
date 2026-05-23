@@ -43,7 +43,7 @@ Other community maps (versions may differ):
 - Node search by name or public key
 - Node popups can copy the full public key from the short key shown under the node name, copy a direct `node=` map link, and optionally expose a MeshCore contact QR modal that shows the node name plus a clickable truncated key
 - Adjustable node size slider (defaults from env, saves locally)
-- LOS tool with elevation profile + peak markers, hover sync, realtime draggable endpoints (Shift+click or long‑press nodes), and Earth-curvature-aware blockage checks
+- LOS tool with elevation profile + peak markers, hover sync, direct lat/lon pin entry, realtime draggable endpoints (Shift+click or long‑press nodes), and Earth-curvature-aware blockage checks
 - Embeddable metadata (Open Graph/Twitter tags) driven by env vars
 - Preview image renders in-bounds device dots for shared links
 - Route pruning via neighbor-aware closest-hop selection + max hop distance (configurable)
@@ -325,10 +325,11 @@ Use it:
 - If a node is still MQTT-online but has stopped sending fresh location packets, the map keeps its last known position visible until MQTT presence expires.
 - Live route IDs are observer-aware (`message_hash:receiver_id`) so the same
   message seen by multiple MQTT observers does not overwrite active lines.
-- Line-of-sight tool: click **LOS tool** and add pins to build a chained path, or **Shift+click** nodes to place LOS pins from existing nodes. Drag endpoints or click a pin and then click the map to move that specific point. Heights are stored per pin.
+- Line-of-sight tool: click **LOS tool** and add pins to build a chained path, or **Shift+click** nodes to place LOS pins from existing nodes. You can also add pins directly from the LOS panel with latitude/longitude + pin height inputs. Drag endpoints or click a pin and then click the map to move that specific point, or update its coordinates from the panel. Heights are stored per pin.
 - On mobile, long‑press a node to select it for LOS.
 - LOS elevations are fetched via `/los/elevations` and LOS/relay math runs client-side (with `/los` fallback).
 - LOS now includes Earth curvature by default using an effective Earth radius factor of `1.333333`, unless you override the LOS curvature envs.
+- LOS and Propagation stay as separate tools on the same map so path obstruction checks and RF coverage planning can be used together without combining their controls into one panel.
 - History tool always loads off (use the button or `history=on` in the URL).
 - Peers tool uses dedicated rolling peer-history buckets so 24h counts stay accurate even on high-volume meshes; peer links are still counted from route `point_ids` even when a hop could not be drawn on the map, distances are shown in the selected km/mi units when both endpoints have coordinates, and forced MQTT listeners are excluded from peer lists.
 - Route History and Peers are now independent: `ROUTE_HISTORY_ENABLED=false` disables the History tool and history payloads, but peer counts continue updating from live routes.

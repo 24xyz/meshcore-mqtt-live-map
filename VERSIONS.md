@@ -6,6 +6,10 @@
 - Fixed the follow-up issue #68 peer regression where disabling Route History eventually caused the Peers tool counts to go empty after older peer buckets expired.
 - Peer-history buckets now continue recording from live routes even when Route History is disabled, so the History tool can stay off without disabling incoming/outgoing peer counts.
 - Route History remains disabled as intended: no History button/panel, no history payloads in `/snapshot` or WebSocket snapshots, and no route-history file growth from live traffic.
+- Added issue #71: the LOS panel now supports direct latitude/longitude pin entry so operators can add LOS points without placing every pin from the map view first.
+- Added a per-pin LOS height field to the coordinate editor, making it explicit that entered heights are above ground level at the selected pin and not one shared route-wide value.
+- LOS pin editing now works from either workflow: add or drag pins on the map, or select a pin and move it from the coordinate editor while recomputing the affected LOS segments.
+- LOS and Propagation remain separate tools on the same map, which keeps path-obstruction checks and RF-coverage planning independent while still supporting deployment planning side by side.
 
 ## v1.9.1 (05-08-2026)
 - Fixed issue #68: `ROUTE_HISTORY_ENABLED=false` now fully disables Route History instead of only stopping new history recording.
