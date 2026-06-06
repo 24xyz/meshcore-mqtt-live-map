@@ -1,6 +1,6 @@
 # Versions
 
-## v1.9.5 (06-06-2026)
+## v1.9.3 (06-06-2026)
 - Fixed issue #74: hardened frontend rendering against stored XSS from untrusted MeshCore/MQTT fields such as node names, peer names, route labels, and coverage metadata.
 - Node popups, permanent labels, search results, Peers rows, Route Details, History popups, and Coverage popups now escape display HTML before rendering user-supplied values.
 - Kept map behavior unchanged: device IDs, coordinates, QR payloads, copy actions, route resolution, peer selection, and filters continue to use the original data while only the displayed HTML is sanitized.
