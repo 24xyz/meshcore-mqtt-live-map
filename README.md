@@ -4,9 +4,9 @@ Version: `1.9.3` (see [VERSIONS.md](VERSIONS.md))
 
 Live MeshCore traffic map that renders nodes, routes, and activity in real time on a Leaflet map. The backend subscribes to MQTT over WebSockets+TLS or TCP, decodes MeshCore packets with the official [`@michaelhart/meshcore-decoder`](https://www.npmjs.com/package/@michaelhart/meshcore-decoder), and streams updates to the browser via WebSockets.
 
-Live example sites:
-https://live.bostonme.sh/ - Greater Boston Mesh Map (reference)
-https://map.newenglandme.sh/ - Newn England Mesh
+Latest version example sites:
+ - https://live.bostonme.sh/ - Greater Boston Mesh Map
+ - https://map.newenglandme.sh/ - Newn England Mesh
 
 Other community maps (versions may differ):
 - https://meshcore-map.ctmesh.org/ - CTMesh Map Live Map
