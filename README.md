@@ -6,6 +6,7 @@ Live MeshCore traffic map that renders nodes, routes, and activity in real time 
 
 Live example sites:
 https://live.bostonme.sh/ - Greater Boston Mesh Map (reference)
+https://map.newenglandme.sh/ - Newn England Mesh
 
 Other community maps (versions may differ):
 - https://meshcore-map.ctmesh.org/ - CTMesh Map Live Map
