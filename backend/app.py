@@ -144,6 +144,8 @@ from config import (
   DIRECT_COORDS_TOPIC_REGEX,
   DIRECT_COORDS_ALLOW_ZERO,
   ROUTE_HISTORY_ALLOWED_MODES_SET,
+  ROUTE_BYTE_FILTER_DEFAULT,
+  HISTORY_BYTE_FILTER_DEFAULT,
   SITE_TITLE,
   SITE_DESCRIPTION,
   SITE_OG_IMAGE,
@@ -1144,6 +1146,153 @@ def _normalize_device_name_for_dedupe(name: Any) -> str:
   return " ".join(name.strip().lower().split())
 
 
+def _device_dedupe_prefix(device_id: str) -> str:
+  value = str(device_id or "").strip().lower()
+  if value.startswith("0x"):
+    value = value[2:]
+  return value[:8] if len(value) >= 8 else ""
+
+
+def _peer_history_activity_score(device_id: str) -> Tuple[int, int]:
+  unique_peers: Set[str] = set()
+  total = 0
+  for entry in peer_history_pairs.values():
+    if not isinstance(entry, dict):
+      continue
+    a_id = entry.get("a_id")
+    b_id = entry.get("b_id")
+    if device_id not in (a_id, b_id):
+      continue
+    other_id = b_id if a_id == device_id else a_id
+    if isinstance(other_id, str) and other_id:
+      unique_peers.add(other_id)
+    buckets = entry.get("buckets")
+    if not isinstance(buckets, dict):
+      continue
+    for count in buckets.values():
+      try:
+        bucket_count = int(count)
+      except (TypeError, ValueError):
+        continue
+      if bucket_count > 0:
+        total += bucket_count
+  return (len(unique_peers), total)
+
+
+def _devices_are_duplicate_candidates(a_id: str, b_id: str) -> bool:
+  a_state = devices.get(a_id)
+  b_state = devices.get(b_id)
+  if not a_state or not b_state:
+    return False
+  a_name = _normalize_device_name_for_dedupe(
+    a_state.name or device_names.get(a_id)
+  )
+  b_name = _normalize_device_name_for_dedupe(
+    b_state.name or device_names.get(b_id)
+  )
+  if not a_name or a_name != b_name:
+    return False
+  a_prefix = _device_dedupe_prefix(a_id)
+  b_prefix = _device_dedupe_prefix(b_id)
+  if a_prefix and a_prefix == b_prefix:
+    return True
+  if _coords_are_zero(a_state.lat, a_state.lon) or _coords_are_zero(
+    b_state.lat, b_state.lon
+  ):
+    return False
+  try:
+    distance_m = _haversine_m(
+      float(a_state.lat),
+      float(a_state.lon),
+      float(b_state.lat),
+      float(b_state.lon),
+    )
+  except (TypeError, ValueError):
+    return False
+  return distance_m <= 30.0
+
+
+def _duplicate_device_groups() -> List[List[str]]:
+  by_name: Dict[str, List[str]] = {}
+  for device_id, dev_state in devices.items():
+    name = _normalize_device_name_for_dedupe(
+      dev_state.name or device_names.get(device_id)
+    )
+    if name:
+      by_name.setdefault(name, []).append(device_id)
+
+  groups: List[List[str]] = []
+  for ids in by_name.values():
+    if len(ids) < 2:
+      continue
+    remaining = set(ids)
+    while remaining:
+      seed = remaining.pop()
+      group = [seed]
+      changed = True
+      while changed:
+        changed = False
+        for candidate in list(remaining):
+          if any(
+            _devices_are_duplicate_candidates(candidate, existing)
+            for existing in group
+          ):
+            remaining.remove(candidate)
+            group.append(candidate)
+            changed = True
+      if len(group) > 1:
+        groups.append(group)
+  return groups
+
+
+def _merge_peer_history_device_id(old_id: str, new_id: str) -> None:
+  if old_id == new_id:
+    return
+  for pair_key, entry in list(peer_history_pairs.items()):
+    if not isinstance(entry, dict):
+      continue
+    a_id = entry.get("a_id")
+    b_id = entry.get("b_id")
+    if old_id not in (a_id, b_id):
+      continue
+    peer_history_pairs.pop(pair_key, None)
+    next_a = new_id if a_id == old_id else a_id
+    next_b = new_id if b_id == old_id else b_id
+    if not isinstance(next_a, str) or not isinstance(next_b, str):
+      continue
+    if next_a == next_b:
+      continue
+    next_key = f"{next_a}|{next_b}"
+    target = peer_history_pairs.setdefault(
+      next_key,
+      {
+        "a_id": next_a,
+        "b_id": next_b,
+        "buckets": {},
+        "last_ts": 0.0,
+      },
+    )
+    target_buckets = target.setdefault("buckets", {})
+    source_buckets = entry.get("buckets")
+    if isinstance(source_buckets, dict):
+      for bucket_key, count in source_buckets.items():
+        try:
+          bucket_count = int(count)
+        except (TypeError, ValueError):
+          continue
+        if bucket_count <= 0:
+          continue
+        key = str(bucket_key)
+        target_buckets[key] = int(target_buckets.get(key, 0)) + bucket_count
+    try:
+      target["last_ts"] = max(
+        float(target.get("last_ts") or 0),
+        float(entry.get("last_ts") or 0),
+      )
+    except (TypeError, ValueError):
+      pass
+
+
 def _drop_device_state(device_id: str) -> None:
   devices.pop(device_id, None)
   trails.pop(device_id, None)
@@ -1165,39 +1314,31 @@ def _drop_device_state(device_id: str) -> None:
 
 
 def _dedupe_loaded_devices() -> Set[str]:
-  groups: Dict[Tuple[str, int, int], List[str]] = {}
-  for device_id, dev_state in devices.items():
-    name = _normalize_device_name_for_dedupe(
-      dev_state.name or device_names.get(device_id)
-    )
-    if (not name or _coords_are_zero(dev_state.lat, dev_state.lon)):
-      continue
-    key = (
-      name,
-      int(round(float(dev_state.lat) * 100000)),
-      int(round(float(dev_state.lon) * 100000)),
-    )
-    groups.setdefault(key, []).append(device_id)
-
   dropped_ids: Set[str] = set()
-  for duplicate_ids in groups.values():
-    if len(duplicate_ids) < 2:
-      continue
+  for duplicate_ids in _duplicate_device_groups():
 
-    def _score(device_id: str) -> Tuple[float, float, str]:
-      last_seen = float(seen_devices.get(device_id) or devices[device_id].ts or 0.0)
+    def _score(device_id: str) -> Tuple[int, int, float, float, float, str]:
+      peer_unique, peer_total = _peer_history_activity_score(device_id)
+      advert_seen = float(last_seen_in_advert.get(device_id) or 0.0)
+      last_seen = float(
+        seen_devices.get(device_id) or devices[device_id].ts or 0.0
+      )
       first_seen = float(first_seen_devices.get(device_id) or last_seen or 0.0)
-      return (last_seen, -first_seen, device_id)
+      return (
+        peer_unique, peer_total, advert_seen, last_seen, -first_seen, device_id
+      )
 
     keep_id = max(duplicate_ids, key=_score)
     for device_id in duplicate_ids:
       if device_id == keep_id:
         continue
+      _merge_peer_history_device_id(device_id, keep_id)
       _drop_device_state(device_id)
       dropped_ids.add(device_id)
 
   if dropped_ids:
     state.state_dirty = True
+    _rebuild_node_hash_map()
     print(
       f"[state] Dropped {len(dropped_ids)} duplicate device entries: "
       f"{', '.join(sorted(dropped_ids))}"
@@ -1484,6 +1625,8 @@ def _history_edge_payload(edge: Dict[str, Any]) -> Dict[str, Any]:
       edge.get("count"),
     "last_ts":
       edge.get("last_ts"),
+    "byte_counts":
+      edge.get("byte_counts") if isinstance(edge.get("byte_counts"), dict) else {},
     "recent":
       edge.get("recent") if isinstance(edge.get("recent"), list) else [],
   }
@@ -2453,6 +2596,19 @@ async def broadcaster():
     if device_state.role:
       device_roles[device_id] = device_state.role
 
+    dropped_duplicate_ids = _dedupe_loaded_devices()
+    if dropped_duplicate_ids and device_id in dropped_duplicate_ids:
+      payload = {"type": "stale", "device_ids": sorted(dropped_duplicate_ids)}
+      dead = []
+      for ws in list(clients):
+        try:
+          await ws.send_text(json.dumps(payload))
+        except Exception:
+          dead.append(ws)
+      for ws in dead:
+        clients.discard(ws)
+      continue
+
     if TRAIL_LEN > 0 and not _coords_are_zero(
       device_state.lat, device_state.lon
     ):
@@ -2479,6 +2635,17 @@ async def broadcaster():
         dead.append(ws)
     for ws in dead:
       clients.discard(ws)
+
+    if dropped_duplicate_ids:
+      payload = {"type": "stale", "device_ids": sorted(dropped_duplicate_ids)}
+      dead = []
+      for ws in list(clients):
+        try:
+          await ws.send_text(json.dumps(payload))
+        except Exception:
+          dead.append(ws)
+      for ws in dead:
+        clients.discard(ws)
 
 
 async def reaper():
@@ -2836,6 +3003,10 @@ def root(request: Request):
       str(HEAT_DEFAULT_ON).lower(),
     "ROUTE_HISTORY_ENABLED":
       str(ROUTE_HISTORY_ENABLED).lower(),
+    "ROUTE_BYTE_FILTER_DEFAULT":
+      ROUTE_BYTE_FILTER_DEFAULT,
+    "HISTORY_BYTE_FILTER_DEFAULT":
+      HISTORY_BYTE_FILTER_DEFAULT,
     "PEERS_DEFAULT_OPEN":
       str(PEERS_DEFAULT_OPEN).lower(),
     "NODE_MARKER_RADIUS":
@@ -3281,6 +3452,8 @@ def map_page(request: Request):
     "DISTANCE_UNITS": DISTANCE_UNITS,
     "HEAT_DEFAULT_ON": str(HEAT_DEFAULT_ON).lower(),
     "ROUTE_HISTORY_ENABLED": str(ROUTE_HISTORY_ENABLED).lower(),
+    "ROUTE_BYTE_FILTER_DEFAULT": ROUTE_BYTE_FILTER_DEFAULT,
+    "HISTORY_BYTE_FILTER_DEFAULT": HISTORY_BYTE_FILTER_DEFAULT,
     "PEERS_DEFAULT_OPEN": str(PEERS_DEFAULT_OPEN).lower(),
     "NODE_MARKER_RADIUS": NODE_MARKER_RADIUS,
     "HISTORY_LINK_SCALE": HISTORY_LINK_SCALE,

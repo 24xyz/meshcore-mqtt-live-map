@@ -46,6 +46,28 @@ const parseRouteByteFilterParam = (value) => {
   if (str === '3' || str === '3b' || str === '3-byte' || str === '3byte') return '3b';
   return null;
 };
+const parseByteFilterSet = (value) => {
+  if (value == null) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const selected = new Set();
+  raw.split(/[,+\s|]+/).forEach((part) => {
+    const parsed = parseRouteByteFilterParam(part);
+    if (parsed === 'all') {
+      selected.clear();
+      selected.add('all');
+    } else if (parsed) {
+      selected.add(parsed);
+    }
+  });
+  if (!selected.size) return null;
+  if (selected.has('all')) return new Set(['all']);
+  return selected;
+};
+const serializeByteFilterSet = (selected) => {
+  if (!selected || selected.has('all') || !selected.size) return 'all';
+  return ['1b', '2b', '3b'].filter((value) => selected.has(value)).join(',') || 'all';
+};
 const queryLat = parseNumberParam(queryParams.get('lat') ?? queryParams.get('latitude'));
 const queryLon = parseNumberParam(queryParams.get('lon') ?? queryParams.get('lng') ?? queryParams.get('long') ?? queryParams.get('longitude'));
 const queryZoom = parseNumberParam(queryParams.get('zoom'));
@@ -82,10 +104,15 @@ const linkedDeviceParamNames = ['node', 'repeater', 'device', 'device_id', 'publ
 const queryHistoryFilter = parseHistoryFilterParam(
   queryParams.get('history_filter') || queryParams.get('historyFilter') || queryParams.get('historyfilter')
 );
-const queryRouteByteFilter = parseRouteByteFilterParam(
+const queryRouteByteFilter = parseByteFilterSet(
   queryParams.get('route_bytes') ||
   queryParams.get('routeBytes') ||
   queryParams.get('routebytes')
+);
+const queryHistoryByteFilter = parseByteFilterSet(
+  queryParams.get('history_bytes') ||
+  queryParams.get('historyBytes') ||
+  queryParams.get('historybytes')
 );
 const queryPeersActive = parseBoolParam(
   queryParams.get('peers') ||
@@ -534,6 +561,7 @@ const peersIn = document.getElementById('peers-in');
 const peersOut = document.getElementById('peers-out');
 const peersToggle = document.getElementById('peers-toggle');
 const peersClear = document.getElementById('peers-clear');
+const peersFilter = document.getElementById('peers-filter');
 const routeDetailsPanel = document.getElementById('route-details-panel');
 const routeDetailsTitle = document.getElementById('route-details-title');
 const routeDetailsContent = document.getElementById('route-details-content');
@@ -667,6 +695,7 @@ if (!Number.isFinite(storedRadius)) {
 const historyLabel = document.getElementById('history-window-label');
 const historyFilter = document.getElementById('history-filter');
 const historyFilterLabel = document.getElementById('history-filter-label');
+const historyByteFilterSelect = document.getElementById('history-byte-filter');
 const historyLinkSizeInput = document.getElementById('history-link-size');
 const historyLinkSizeValue = document.getElementById('history-link-size-value');
 const routeByteFilterSelect = document.getElementById('route-byte-filter');
@@ -684,6 +713,7 @@ let peersActive = false;
 let peersSelectedId = null;
 let peersData = null;
 let peersRequestToken = 0;
+let peersFilterText = '';
 let historyFilterMode = Number(localStorage.getItem('meshmapHistoryFilter') || '0');
 if (queryHistoryFilter != null) {
   historyFilterMode = queryHistoryFilter;
@@ -697,13 +727,106 @@ if (historyFilter) {
   historyFilter.value = String(historyFilterMode);
 }
 const ROUTE_BYTE_FILTER_VALUES = new Set(['all', '1b', '2b', '3b']);
-let routeByteFilter = queryRouteByteFilter || 'all';
-if (!ROUTE_BYTE_FILTER_VALUES.has(routeByteFilter)) {
-  routeByteFilter = 'all';
-}
-if (routeByteFilterSelect) {
-  routeByteFilterSelect.value = routeByteFilter;
-}
+const normalizeByteFilterSet = (selected) => {
+  const values = selected instanceof Set ? selected : parseByteFilterSet(selected);
+  if (!values || !values.size || values.has('all')) return new Set(['all']);
+  const filtered = new Set([...values].filter((value) => ROUTE_BYTE_FILTER_VALUES.has(value) && value !== 'all'));
+  return filtered.size ? filtered : new Set(['all']);
+};
+const defaultRouteByteFilter = parseByteFilterSet(config.routeByteFilterDefault) || new Set(['all']);
+const defaultHistoryByteFilter = parseByteFilterSet(config.historyByteFilterDefault) || new Set(['all']);
+let routeByteFilter = normalizeByteFilterSet(
+  queryRouteByteFilter ||
+  parseByteFilterSet(localStorage.getItem('meshmapRouteByteFilter')) ||
+  defaultRouteByteFilter
+);
+let historyByteFilter = normalizeByteFilterSet(
+  queryHistoryByteFilter ||
+  parseByteFilterSet(localStorage.getItem('meshmapHistoryByteFilter')) ||
+  defaultHistoryByteFilter
+);
+const setByteFilterChecks = (root, selected) => {
+  if (!root) return;
+  const normalized = normalizeByteFilterSet(selected);
+  root.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    input.checked = normalized.has(input.value);
+  });
+  const label = root.querySelector('.byte-summary-label');
+  if (label) {
+    const text = serializeByteFilterSet(normalized)
+      .split(',')
+      .map((value) => ({ all: 'All', '1b': '1-byte', '2b': '2-byte', '3b': '3-byte' }[value] || value))
+      .join(', ');
+    label.textContent = text;
+  }
+};
+const selectedByteFilterFromGroup = (root, changedInput = null) => {
+  if (!root) return new Set(['all']);
+  const allInput = root.querySelector('input[value="all"]');
+  const specific = [...root.querySelectorAll('input[type="checkbox"]')]
+    .filter((input) => input.value !== 'all');
+  if (changedInput && changedInput.value === 'all' && changedInput.checked) {
+    specific.forEach((input) => { input.checked = false; });
+    return new Set(['all']);
+  }
+  if (changedInput && changedInput.value !== 'all' && changedInput.checked && allInput) {
+    allInput.checked = false;
+  }
+  const selected = new Set(
+    specific.filter((input) => input.checked).map((input) => input.value)
+  );
+  if (!selected.size || selected.size === specific.length) {
+    if (allInput) allInput.checked = true;
+    specific.forEach((input) => { input.checked = false; });
+    return new Set(['all']);
+  }
+  return normalizeByteFilterSet(selected);
+};
+const positionByteDropdown = (root) => {
+  if (!root || !root.open) return;
+  const summary = root.querySelector('summary');
+  const panel = root.querySelector('.byte-check-options');
+  if (!summary || !panel) return;
+  const rect = summary.getBoundingClientRect();
+  const width = Math.max(rect.width, 128);
+  const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8);
+  panel.style.minWidth = `${width}px`;
+  panel.style.left = `${left}px`;
+  panel.style.top = `${Math.min(rect.bottom + 4, window.innerHeight - 140)}px`;
+};
+const setupByteDropdown = (root) => {
+  if (!root) return;
+  root.addEventListener('toggle', () => {
+    if (root.open) {
+      [routeByteFilterSelect, historyByteFilterSelect].forEach((other) => {
+        if (other && other !== root) other.open = false;
+      });
+      requestAnimationFrame(() => positionByteDropdown(root));
+    }
+  });
+};
+setupByteDropdown(routeByteFilterSelect);
+setupByteDropdown(historyByteFilterSelect);
+document.addEventListener('click', (ev) => {
+  const target = ev.target;
+  [routeByteFilterSelect, historyByteFilterSelect].forEach((root) => {
+    if (root && root.open && !root.contains(target)) {
+      root.open = false;
+    }
+  });
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape') return;
+  [routeByteFilterSelect, historyByteFilterSelect].forEach((root) => {
+    if (root) root.open = false;
+  });
+});
+window.addEventListener('resize', () => {
+  positionByteDropdown(routeByteFilterSelect);
+  positionByteDropdown(historyByteFilterSelect);
+});
+setByteFilterChecks(routeByteFilterSelect, routeByteFilter);
+setByteFilterChecks(historyByteFilterSelect, historyByteFilter);
 const HISTORY_LINK_MIN = 0.1;
 const HISTORY_LINK_MID = 1;
 const HISTORY_LINK_MAX = 2;
@@ -872,7 +995,7 @@ function setStats() {
   const onlineTotal = mqttPresenceKnown ? mqttConnectedTotal : onlineOnMap;
   const totalRoutes = routeLines.size;
   const visibleRoutes = getVisibleRouteCount();
-  const routeLabel = routeByteFilter === 'all' || visibleRoutes === totalRoutes
+  const routeLabel = routeByteFilter.has('all') || visibleRoutes === totalRoutes
     ? `${visibleRoutes} routes`
     : `${visibleRoutes}/${totalRoutes} routes`;
   document.getElementById('stats').textContent = `${markers.size} active devices • ${onlineTotal} MQTT online • ${routeLabel} • ${historyLines.size} history`;
@@ -2078,11 +2201,7 @@ function setNodesVisible(visible) {
       peerLayer.addTo(map);
     }
     if (peersActive && peersData) {
-      renderPeerLines(
-        { lat: peersData.lat, lon: peersData.lon },
-        peersData.incoming || [],
-        peersData.outgoing || []
-      );
+      renderCurrentPeers();
     }
     refreshViewportLayers();
     if (arcadeModeEnabled) {
@@ -2478,12 +2597,10 @@ function routeHashByteWidth(hash) {
 }
 
 function routeMatchesByteFilter(meta) {
-  if (!meta || routeByteFilter === 'all') return true;
-  const targetWidth = Number.parseInt(routeByteFilter, 10);
-  if (!Number.isFinite(targetWidth) || targetWidth < 1) return true;
+  if (!meta || routeByteFilter.has('all')) return true;
   const hashes = Array.isArray(meta.hashes) ? meta.hashes : [];
   if (!hashes.length) return false;
-  return hashes.some((hash) => routeHashByteWidth(hash) === targetWidth);
+  return hashes.some((hash) => routeByteFilter.has(`${routeHashByteWidth(hash)}b`));
 }
 
 function routeVisibleForCurrentFilters(meta) {
@@ -2851,6 +2968,53 @@ function renderPeerLines(origin, incoming, outgoing) {
   }
 }
 
+function normalizedPeerFilter() {
+  return String(peersFilterText || '').trim().toLowerCase();
+}
+
+function peerMatchesFilter(peer, query) {
+  if (!query) return true;
+  if (!peer) return false;
+  const values = [
+    peer.name,
+    peer.peer_id,
+    peer.role,
+    peer.peer_id ? String(peer.peer_id).slice(0, 8) : '',
+  ];
+  return values.some(value => String(value || '').toLowerCase().includes(query));
+}
+
+function filteredPeers(peers) {
+  const peerItems = Array.isArray(peers) ? peers : [];
+  const query = normalizedPeerFilter();
+  if (!query) return peerItems;
+  return peerItems.filter(peer => peerMatchesFilter(peer, query));
+}
+
+function renderCurrentPeers() {
+  if (!peersData) return;
+  const origin = { lat: peersData.lat, lon: peersData.lon };
+  const incoming = filteredPeers(peersData.incoming || []);
+  const outgoing = filteredPeers(peersData.outgoing || []);
+  renderPeerList(
+    peersIn,
+    incoming,
+    peersData.incoming_total || 0,
+    'incoming',
+    origin,
+    (peersData.incoming || []).length
+  );
+  renderPeerList(
+    peersOut,
+    outgoing,
+    peersData.outgoing_total || 0,
+    'outgoing',
+    origin,
+    (peersData.outgoing || []).length
+  );
+  renderPeerLines(origin, incoming, outgoing);
+}
+
 function getPeerDistanceMeters(origin, peer) {
   const apiDistance = Number(peer && peer.distance_m);
   if (Number.isFinite(apiDistance) && apiDistance >= 0) {
@@ -2867,14 +3031,17 @@ function getPeerDistanceMeters(origin, peer) {
   return haversineMeters(originLat, originLon, peerLat, peerLon);
 }
 
-function renderPeerList(target, peers, total, label, origin = null) {
+function renderPeerList(target, peers, total, label, origin = null, unfilteredCount = null) {
   if (!target) return;
   target.innerHTML = '';
   const peerItems = Array.isArray(peers) ? peers : [];
   if (peerItems.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'small';
-    empty.textContent = `No ${label} data yet.`;
+    const filtered = normalizedPeerFilter() && Number(unfilteredCount) > 0;
+    empty.textContent = filtered
+      ? `No ${label} peers match this filter.`
+      : `No ${label} data yet.`;
     target.appendChild(empty);
     return;
   }
@@ -2890,6 +3057,9 @@ function renderPeerList(target, peers, total, label, origin = null) {
     }
     const meta = metaParts.join('<span class="peer-stat-separator" aria-hidden="true">•</span>');
     item.innerHTML = `<span class="peer-name">${escapeHtml(name)}</span><span class="peer-count">${meta}</span>`;
+    if (peer.peer_id) {
+      item.title = `${name} (${peer.peer_id.slice(0, 8)}…)`;
+    }
     item.addEventListener('click', () => {
       if (peer.peer_id) {
         focusDevice(peer.peer_id);
@@ -2929,14 +3099,7 @@ async function selectPeerNode(deviceId) {
       peersMeta.textContent = '';
       peersMeta.hidden = true;
     }
-    const origin = { lat: data.lat, lon: data.lon };
-    renderPeerList(peersIn, data.incoming || [], inboundTotal, 'incoming', origin);
-    renderPeerList(peersOut, data.outgoing || [], outboundTotal, 'outgoing', origin);
-    renderPeerLines(
-      origin,
-      data.incoming || [],
-      data.outgoing || []
-    );
+    renderCurrentPeers();
   } catch (err) {
     if (requestToken !== peersRequestToken) return;
     setPeersPanelTitle();
@@ -2966,6 +3129,8 @@ function clearPeers() {
   setPeerHeadings();
   renderPeerList(peersIn, [], 0, 'incoming');
   renderPeerList(peersOut, [], 0, 'outgoing');
+  if (peersFilter) peersFilter.value = '';
+  peersFilterText = '';
   clearPeerLines();
 }
 
@@ -2987,11 +3152,7 @@ function setPeersActive(active) {
     }
   }
   if (active && peersData) {
-    renderPeerLines(
-      { lat: peersData.lat, lon: peersData.lon },
-      peersData.incoming || [],
-      peersData.outgoing || []
-    );
+    renderCurrentPeers();
   } else if (active) {
     setPeerHeadings(0, 0);
   }
@@ -3153,11 +3314,7 @@ function setMqttOnlyVisible(visible) {
     if (selectedDevice && !devicePassesMqttOnlyFilter(selectedDevice)) {
       clearPeerLines();
     } else {
-      renderPeerLines(
-        { lat: peersData.lat, lon: peersData.lon },
-        peersData.incoming || [],
-        peersData.outgoing || []
-      );
+      renderCurrentPeers();
     }
   }
   refreshStats();
@@ -5325,12 +5482,16 @@ function makeHistoryPopup(entry) {
       const origin = deviceLabelFromId(sample.origin_id);
       const receiver = deviceLabelFromId(sample.receiver_id);
       const routeMode = sample.route_mode ? String(sample.route_mode) : 'path';
+      const byteWidths = Array.isArray(sample.route_byte_widths) && sample.route_byte_widths.length
+        ? sample.route_byte_widths.map(width => `${width}-byte`).join(', ')
+        : 'unknown';
       return `
             <div class="popup-sample">
               <strong>${escapeHtml(label)}</strong> • ${escapeHtml(when)}<br/>
               Origin: ${escapeHtml(origin)}<br/>
               Receiver: ${escapeHtml(receiver)}<br/>
               Route: ${escapeHtml(routeMode)}<br/>
+              Bytes: ${escapeHtml(byteWidths)}<br/>
               Hash: ${escapeHtml(shortHash(sample.message_hash))}
             </div>
           `;
@@ -6187,8 +6348,9 @@ function historyWeight(count) {
 function computeHistoryThresholds() {
   const counts = [];
   historyCache.forEach(edge => {
-    if (edge && Number.isFinite(edge.count)) {
-      counts.push(edge.count);
+    const count = historyDisplayCount(edge);
+    if (count > 0) {
+      counts.push(count);
     }
   });
   if (!counts.length) {
@@ -6242,6 +6404,22 @@ function historyFilterAllows(count, thresholds) {
   return true;
 }
 
+function historyByteFilterWidth() {
+  if (historyByteFilter.has('all')) return null;
+  return ['1b', '2b', '3b']
+    .filter((value) => historyByteFilter.has(value))
+    .map((value) => value.slice(0, 1));
+}
+
+function historyDisplayCount(edge) {
+  if (!edge) return 0;
+  const widths = historyByteFilterWidth();
+  if (!widths) return Number(edge.count) || 0;
+  const counts = edge.byte_counts;
+  if (!counts || typeof counts !== 'object') return 0;
+  return widths.reduce((total, width) => total + (Number(counts[width]) || 0), 0);
+}
+
 function updateHistoryFilterLabel() {
   if (!historyFilterLabel) return;
   let text = 'All links';
@@ -6257,8 +6435,8 @@ function updateHistoryRendering() {
   const thresholds = computeHistoryThresholds();
   historyLines.forEach(entry => {
     if (!entry || !entry.line) return;
-    const count = Number(entry.count) || 1;
-    const shouldShow = historyFilterAllows(count, thresholds);
+    const count = historyDisplayCount(entry);
+    const shouldShow = count > 0 && historyFilterAllows(count, thresholds);
     entry.line.setStyle({
       color: historyColor(count, thresholds),
       weight: shouldShow ? historyWeight(count) : 0.1,
@@ -6284,6 +6462,16 @@ function updateHistoryFilter(mode) {
   if (historyVisible && nodesVisible) {
     updateHistoryRendering();
   }
+}
+
+function updateHistoryByteFilter(value) {
+  historyByteFilter = normalizeByteFilterSet(value);
+  localStorage.setItem('meshmapHistoryByteFilter', serializeByteFilterSet(historyByteFilter));
+  setByteFilterChecks(historyByteFilterSelect, historyByteFilter);
+  if (historyVisible && nodesVisible) {
+    updateHistoryRendering();
+  }
+  refreshStats();
 }
 
 function updateHistoryLinkScale(next) {
@@ -6317,7 +6505,7 @@ function renderHistoryEdge(edge) {
   let entry = historyLines.get(id);
   if (!entry) {
     const line = L.polyline(points, { renderer: vectorRenderer, color: '#7dd3fc', weight: 2, opacity: 0.6 }).addTo(historyLayer);
-    entry = { line, count: Number(edge.count) || 1, recent: [], lastTs: null };
+    entry = { line, count: Number(edge.count) || 1, recent: [], lastTs: null, byte_counts: {} };
     historyLines.set(id, entry);
     line.on('click', (ev) => {
       const popup = makeHistoryPopup(entry);
@@ -6334,6 +6522,9 @@ function renderHistoryEdge(edge) {
   }
   entry.recent = Array.isArray(edge.recent) ? edge.recent : [];
   entry.lastTs = edge.last_ts || entry.lastTs;
+  entry.byte_counts = edge.byte_counts && typeof edge.byte_counts === 'object'
+    ? edge.byte_counts
+    : {};
   refreshHistoryStyles();
 }
 
@@ -7240,7 +7431,8 @@ function buildMapShareUrl(options = {}) {
   );
   url.searchParams.set('units', distanceUnits);
   url.searchParams.set('history_filter', String(historyFilterMode));
-  url.searchParams.set('route_bytes', routeByteFilter);
+  url.searchParams.set('history_bytes', serializeByteFilterSet(historyByteFilter));
+  url.searchParams.set('route_bytes', serializeByteFilterSet(routeByteFilter));
   if (options.deviceId) {
     url.searchParams.set('node', options.deviceId);
     url.searchParams.set('nodes', 'on');
@@ -7404,9 +7596,9 @@ if (unitsToggle) {
 
 if (routeByteFilterSelect) {
   routeByteFilterSelect.addEventListener('change', (ev) => {
-    const next = parseRouteByteFilterParam(ev.target.value) || 'all';
-    routeByteFilter = next;
-    routeByteFilterSelect.value = routeByteFilter;
+    routeByteFilter = selectedByteFilterFromGroup(routeByteFilterSelect, ev.target);
+    localStorage.setItem('meshmapRouteByteFilter', serializeByteFilterSet(routeByteFilter));
+    setByteFilterChecks(routeByteFilterSelect, routeByteFilter);
     syncAllRouteDisplays();
   });
 }
@@ -7799,6 +7991,11 @@ if (historyFilter) {
     updateHistoryFilter(ev.target.value);
   });
 }
+if (historyByteFilterSelect) {
+  historyByteFilterSelect.addEventListener('change', (ev) => {
+    updateHistoryByteFilter(selectedByteFilterFromGroup(historyByteFilterSelect, ev.target));
+  });
+}
 if (historyLinkSizeInput) {
   historyLinkSizeInput.addEventListener('input', (ev) => {
     updateHistoryLinkScale(ev.target.value);
@@ -7844,6 +8041,14 @@ if (peersTitle) {
 if (peersClear) {
   peersClear.addEventListener('click', () => {
     clearPeers();
+  });
+}
+if (peersFilter) {
+  peersFilter.addEventListener('input', () => {
+    peersFilterText = peersFilter.value || '';
+    if (peersData) {
+      renderCurrentPeers();
+    }
   });
 }
 

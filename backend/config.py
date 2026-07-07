@@ -64,6 +64,8 @@ ROUTE_ALLOW_AMBIGUOUS_ONE_BYTE_FALLBACK = (
   os.getenv("ROUTE_ALLOW_AMBIGUOUS_ONE_BYTE_FALLBACK", "false").lower() ==
   "true"
 )
+ROUTE_BYTE_FILTER_DEFAULT = os.getenv("ROUTE_BYTE_FILTER_DEFAULT", "all")
+HISTORY_BYTE_FILTER_DEFAULT = os.getenv("HISTORY_BYTE_FILTER_DEFAULT", "all")
 ROUTE_HISTORY_ENABLED = os.getenv("ROUTE_HISTORY_ENABLED",
                                   "true").lower() == "true"
 ROUTE_HISTORY_HOURS = float(os.getenv("ROUTE_HISTORY_HOURS", "24"))

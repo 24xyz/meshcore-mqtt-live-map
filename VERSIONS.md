@@ -1,5 +1,13 @@
 # Versions
 
+## v1.9.4 (07-07-2026)
+- Changed live and History `Path bytes` controls to checkbox selectors so users can keep `All` or combine specific byte widths such as `2-byte + 3-byte`.
+- Added `ROUTE_BYTE_FILTER_DEFAULT` and `HISTORY_BYTE_FILTER_DEFAULT` env defaults. Browser selections persist locally, while share links can carry comma-separated byte filters such as `route_bytes=2b,3b` and `history_bytes=1b,2b`.
+- Updated dependency pins: `fastapi==0.139.0`, `uvicorn[standard]==0.50.2`, `Pillow==12.3.0`, `httpx2==2.5.0`, and `pytest==9.1.1`.
+- Route History now records path-hash byte-width metadata for newly ingested history samples and exposes per-edge byte counts to the frontend. Older history records remain visible in `All` after upgrade, while byte-specific filters start showing those links as new byte-aware traffic arrives.
+- Added a Peers panel filter box that live-filters incoming/outgoing peers by node name, public-key prefix, or role, and keeps the peer lines aligned with the visible filtered rows.
+- Fixed stale duplicate-node cleanup so older same-name/public-key-prefix records without peer activity no longer render in front of the newer connected node record.
+
 ## v1.9.3 (06-06-2026)
 - Fixed issue #74: hardened frontend rendering against stored XSS from untrusted MeshCore/MQTT fields such as node names, peer names, route labels, and coverage metadata.
 - Node popups, permanent labels, search results, Peers rows, Route Details, History popups, and Coverage popups now escape display HTML before rendering user-supplied values.
