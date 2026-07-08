@@ -176,7 +176,7 @@ if (mapBoundaryDataEl) {
   }
 }
 let baseLayer = (config.mapDefaultLayer || 'light').toLowerCase();
-const validLayers = new Set(['dark', 'topo', 'light']);
+const validLayers = new Set(['dark', 'topo', 'satellite', 'light']);
 if (validLayers.has(queryLayer)) {
   baseLayer = queryLayer;
 }
@@ -232,6 +232,21 @@ const topoTiles = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
   maxZoom: 17,
   attribution: '&copy; OpenStreetMap contributors &copy; OpenTopoMap'
 });
+const satelliteImageryTiles = L.tileLayer(
+  'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg',
+  {
+    maxZoom: 19,
+    attribution: 'Sentinel-2 cloudless &copy; EOX IT Services GmbH (contains modified Copernicus Sentinel data 2024)'
+  }
+);
+const satelliteLabelTiles = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+  {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+  }
+);
+const satelliteTiles = L.layerGroup([satelliteImageryTiles, satelliteLabelTiles]);
 let mapRadiusCircle = null;
 const activeBoundaryShow = mapBoundaryShow || mapRadiusShow;
 if (mapBoundaryMode === 'radius' && activeBoundaryShow && mapRadiusKm > 0) {
@@ -265,7 +280,7 @@ if (mapBoundaryMode === 'polygon' && activeBoundaryShow && mapBoundaryPoints.len
   }
 }
 const storedLayer = localStorage.getItem('meshmapBaseLayer');
-if (!validLayers.has(queryLayer) && (storedLayer === 'dark' || storedLayer === 'topo' || storedLayer === 'light')) {
+if (!validLayers.has(queryLayer) && validLayers.has(storedLayer)) {
   baseLayer = storedLayer;
 }
 
@@ -281,6 +296,12 @@ const apiPath = (path) => {
   if (!publicPathPrefix) return p;
   return `${publicPathPrefix}${p}`;
 };
+if (map.attributionControl) {
+  const privacyHref = escapeHtmlAttr(apiPath('/privacy'));
+  map.attributionControl.addAttribution(
+    `<a href="${privacyHref}" target="_blank" rel="noopener">Privacy</a>`
+  );
+}
 const tokenHeaders = () => (prodMode && apiToken ? { 'x-access-token': apiToken } : {});
 const withToken = (path) => {
   const resolved = apiPath(path);
@@ -7575,10 +7596,13 @@ function setBaseLayer(name) {
   if (map.hasLayer(lightTiles)) map.removeLayer(lightTiles);
   if (map.hasLayer(darkTiles)) map.removeLayer(darkTiles);
   if (map.hasLayer(topoTiles)) map.removeLayer(topoTiles);
+  if (map.hasLayer(satelliteTiles)) map.removeLayer(satelliteTiles);
   if (name === 'dark') {
     map.addLayer(darkTiles);
   } else if (name === 'topo') {
     map.addLayer(topoTiles);
+  } else if (name === 'satellite') {
+    map.addLayer(satelliteTiles);
   } else {
     map.addLayer(lightTiles);
   }
@@ -7589,8 +7613,20 @@ function setBaseLayer(name) {
     mapToggle.textContent = baseLayer === 'dark' ? 'Light map' : 'Dark map';
   }
   if (topoToggle) {
-    topoToggle.textContent = baseLayer === 'topo' ? 'Standard map' : 'Topo map';
+    if (baseLayer === 'topo') {
+      topoToggle.textContent = 'Satellite map';
+    } else if (baseLayer === 'satellite') {
+      topoToggle.textContent = 'Standard map';
+    } else {
+      topoToggle.textContent = 'Topo map';
+    }
   }
+}
+
+function nextStandardMapLayer() {
+  if (baseLayer === 'topo') return 'satellite';
+  if (baseLayer === 'satellite') return 'light';
+  return 'topo';
 }
 
 if (mapToggle) {
@@ -7600,7 +7636,7 @@ if (mapToggle) {
 }
 if (topoToggle) {
   topoToggle.addEventListener('click', () => {
-    setBaseLayer(baseLayer === 'topo' ? 'light' : 'topo');
+    setBaseLayer(nextStandardMapLayer());
   });
 }
 setBaseLayer(baseLayer);

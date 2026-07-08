@@ -12,12 +12,14 @@
       position: absolute;
       top: 10px;
       left: 10px;
-      background: rgba(0, 0, 0, .65);
+      background: rgba(8, 13, 24, .82);
       color: #fff;
       padding: 10px 12px;
       border-radius: 10px;
       font-family: ui-sans-serif, system-ui, sans-serif;
       z-index: 999;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+      backdrop-filter: blur(2px);
       width: min(340px, calc(100vw - 20px));
       max-width: 340px;
       max-height: 90vh;
@@ -74,23 +76,33 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 8px;
     }
 
     .hud-brand {
       display: flex;
       align-items: center;
       gap: 8px;
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
     .hud-toggle {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      flex: 0 0 auto;
       padding: 0;
       border: none;
       background: transparent;
       cursor: pointer;
+    }
+
+    .hud-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .hud-logo {
@@ -126,11 +138,12 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      flex: 0 0 30px;
       width: 30px;
       height: 30px;
       border-radius: 8px;
-      background: rgba(255, 255, 255, .12);
-      border: 1px solid rgba(255, 255, 255, .2);
+      background: rgba(15, 23, 42, .68);
+      border: 1px solid rgba(255, 255, 255, .32);
       color: #fff;
       text-decoration: none;
       cursor: pointer;
@@ -138,8 +151,8 @@
     }
 
     .hud-action:hover {
-      background: rgba(255, 255, 255, .22);
-      border-color: rgba(255, 255, 255, .4);
+      background: rgba(30, 41, 59, .82);
+      border-color: rgba(255, 255, 255, .55);
     }
 
     .hud-action svg {

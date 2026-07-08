@@ -263,7 +263,8 @@ Update checks:
 
 Map + LOS:
 - `MAP_START_LAT` / `MAP_START_LON` / `MAP_START_ZOOM` (default map view)
-- `MAP_DEFAULT_LAYER` (`light`, `dark`, or `topo`; localStorage overrides)
+- `MAP_DEFAULT_LAYER` (`light`, `dark`, `topo`, or `satellite`; localStorage overrides)
+  - `satellite` uses open Sentinel-2 cloudless imagery from EOX with OpenStreetMap/CARTO labels and borders overlaid.
 - `MAP_RADIUS_KM` (`0` disables radius filtering; `.env.example` uses `241.4` km ≈ 150mi)
 - `MAP_RADIUS_SHOW` (`true` draws the radius debug circle)
 - `LOS_ELEVATION_URL` (elevation API for LOS tool)

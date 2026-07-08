@@ -3035,6 +3035,79 @@ def _check_turnstile_auth(request: Request) -> bool:
 # =========================
 # FastAPI routes
 # =========================
+def _markdown_to_policy_html(markdown_text: str) -> str:
+  lines = markdown_text.splitlines()
+  output: List[str] = []
+  in_list = False
+
+  def close_list() -> None:
+    nonlocal in_list
+    if in_list:
+      output.append("</ul>")
+      in_list = False
+
+  for raw_line in lines:
+    line = raw_line.strip()
+    if not line:
+      close_list()
+      continue
+    if line.startswith("# "):
+      close_list()
+      output.append(f"<h1>{html.escape(line[2:])}</h1>")
+    elif line.startswith("## "):
+      close_list()
+      output.append(f"<h2>{html.escape(line[3:])}</h2>")
+    elif line.startswith("- "):
+      if not in_list:
+        output.append("<ul>")
+        in_list = True
+      output.append(f"<li>{html.escape(line[2:])}</li>")
+    else:
+      close_list()
+      output.append(f"<p>{html.escape(line)}</p>")
+  close_list()
+  return "\n".join(output)
+
+
+@app.get("/privacy")
+def privacy_policy():
+  privacy_path = os.path.join(APP_DIR, "static", "privacy.md")
+  try:
+    with open(privacy_path, "r", encoding="utf-8") as handle:
+      markdown_text = handle.read()
+  except Exception:
+    raise HTTPException(status_code=404, detail="Privacy policy not found")
+
+  body = _markdown_to_policy_html(markdown_text)
+  content = f"""<!doctype html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title>Privacy Policy</title>
+  <style>
+    body {{
+      max-width: 760px;
+      margin: 32px auto;
+      padding: 0 18px 48px;
+      background: #0f172a;
+      color: #e5e7eb;
+      font: 16px/1.55 ui-sans-serif, system-ui, sans-serif;
+    }}
+    a {{ color: #93c5fd; }}
+    h1, h2 {{ color: #f8fafc; line-height: 1.2; }}
+    h1 {{ margin-bottom: 4px; }}
+    h2 {{ margin-top: 28px; }}
+    li {{ margin: 6px 0; }}
+  </style>
+</head>
+<body>
+{body}
+</body>
+</html>"""
+  return HTMLResponse(content, headers={"Cache-Control": "no-store"})
+
+
 @app.get("/")
 def root(request: Request):
   # If Turnstile is enabled and user isn't authenticated, serve landing page

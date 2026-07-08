@@ -120,7 +120,8 @@ This project renders live MeshCore traffic on a Leaflet + OpenStreetMap map. A F
 - HUD is capped to `90vh` and scrolls to avoid running off-screen.
 - Map start position is configurable with `MAP_START_LAT`, `MAP_START_LON`, `MAP_START_ZOOM`.
 - Radius filter: `MAP_RADIUS_KM=0` disables filtering; `.env.example` uses `241.4` km (150mi). `MAP_RADIUS_SHOW=true` draws a debug circle.
-- Default base layer can be set with `MAP_DEFAULT_LAYER` (localStorage overrides).
+- Default base layer can be set with `MAP_DEFAULT_LAYER` (`light`, `dark`, `topo`, or `satellite`; localStorage overrides).
+- The `satellite` layer uses open Sentinel-2 cloudless imagery from EOX with OpenStreetMap/CARTO labels and borders overlaid.
 - Units toggle (km/mi) is site-wide; default from `DISTANCE_UNITS` and stored in localStorage.
 - Heat toggle defaults from `HEAT_DEFAULT_ON` on first load before any browser-local override exists.
 - Node size slider defaults from `NODE_MARKER_RADIUS` and persists in localStorage.
