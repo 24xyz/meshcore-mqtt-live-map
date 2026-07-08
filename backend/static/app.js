@@ -5,6 +5,10 @@ const cleanConfigValue = (value) => {
   const str = String(value || '').trim();
   return /^\{\{[^{}]+\}\}$/.test(str) ? '' : str;
 };
+const newEnglandCoreScopeFallback = () => {
+  const host = window.location.hostname.toLowerCase();
+  return host === 'map.newenglandme.sh' ? 'https://analyzer.newenglandme.sh' : '';
+};
 const parseNumberParam = (value) => {
   if (value == null) return null;
   const str = String(value).trim();
@@ -445,7 +449,8 @@ const losPointIcon = L.divIcon({
 const coverageApiUrl = cleanConfigValue(config.coverageApiUrl);
 const customLinkUrl = cleanConfigValue(config.customLinkUrl);
 const packetAnalyzerUrl = cleanConfigValue(config.packetAnalyzerUrl);
-const coreScopeUrl = cleanConfigValue(config.corescopeUrl);
+const coreScopeUrl = cleanConfigValue(config.corescopeUrl) ||
+  newEnglandCoreScopeFallback();
 const coverageEnabled = Boolean(coverageApiUrl);
 const coverageLayer = L.layerGroup();
 let coverageVisible = false;
